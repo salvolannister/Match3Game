@@ -25,11 +25,12 @@ public class BoardManager : Manager<BoardManager>
     private Camera cam;
     private Ray ray;
     private RaycastHit raycastHit;
+    private int[] nSelectedTiles;
     private const int MAX_DIST = 1000;
     #endregion
 
     
-    void Awake()
+    protected override void Awake()
     {
         base.Awake();
         tiles = new Tile[dimX, dimY];
@@ -42,11 +43,11 @@ public class BoardManager : Manager<BoardManager>
     {
         // Get tiles dimensions in order to dispose them correctly
         // I suppose they will have all the same extents
-        Tile tmp = Instantiate(tilesSO.GetRandomTile());
-        Renderer renderer = tmp.gameObject.GetComponent<Renderer>();
-        tmp.gameObject.SetActive(false);
-        tilesExtents = renderer.bounds.extents;
 
+        Tile tmp = null;
+        Renderer renderer = tilesSO.GetRandomTile().GetComponent<Renderer>();
+        tilesExtents = renderer.bounds.extents;
+        nSelectedTiles = new int[dimX];
         // Get backGround bottom left corner 
         renderer = backGround.GetComponent<Renderer>();
         if (renderer == null) {
@@ -54,15 +55,16 @@ public class BoardManager : Manager<BoardManager>
             return;
         }
         Vector3 backGroundExtents = renderer.bounds.extents;
-        Vector3 backGroundPosition = backGround.gameObject.transform.position;
+        Vector3 backGroundPosition = backGround.transform.position;
 
         Vector3 bottomLeftCorner = new Vector3(backGroundPosition.x - backGroundExtents.x, backGroundPosition.y - backGroundExtents.y, backGroundPosition.z - tilesExtents.z);
-        #if DEBUG
-        Debug.DrawLine(bottomLeftCorner, bottomLeftCorner + Vector3.up, Color.red, 20);
-        Debug.DrawLine(bottomLeftCorner, bottomLeftCorner + Vector3.down, Color.red, 20);
-        Debug.DrawLine(bottomLeftCorner, bottomLeftCorner + Vector3.left, Color.red, 20);
-        Debug.DrawLine(bottomLeftCorner, bottomLeftCorner + Vector3.right, Color.red, 20);
-        #endif
+      
+        //#if DEBUG
+        //Debug.DrawLine(bottomLeftCorner, bottomLeftCorner + Vector3.up, Color.red, 20);
+        //Debug.DrawLine(bottomLeftCorner, bottomLeftCorner + Vector3.down, Color.red, 20);
+        //Debug.DrawLine(bottomLeftCorner, bottomLeftCorner + Vector3.left, Color.red, 20);
+        //Debug.DrawLine(bottomLeftCorner, bottomLeftCorner + Vector3.right, Color.red, 20);
+        //#endif
 
         //this simplifies the calculation of where the tiles should be one respect to another 
         bottomLeftCorner.x += tilesExtents.x;
@@ -70,7 +72,7 @@ public class BoardManager : Manager<BoardManager>
 
         for (int x = 0; x < dimX; x++)
         {
-
+            nSelectedTiles[x] = 0;
             for (int y = 0; y < dimY; y++)
             {
                 tmp = Tile.SpawnTile(x, y);
@@ -111,42 +113,105 @@ public class BoardManager : Manager<BoardManager>
     {
         Tile tile = hitGO.GetComponent<Tile>();
         if (tile != null) {
-            tile.Select();           
-            co = StartCoroutine(ShiftTilesDown(tile.posX, tile.posY));
+            nSelectedTiles[tile.posX] += 1;
+            tile.Select( () => co = StartCoroutine(ShiftTilesDown(tile.posX, tile.posY)));           
+            
         }
         else {
             Debug.Log(" The gameObject hit is not a Tile! ");
         }
     }
+    
+    private IEnumerator ShiftTilesDown(int x, int firstEmptyY, float shiftDelay = .09f) {
+        WaitForSeconds waitForShiftDelay = new WaitForSeconds(shiftDelay);   
+        Transform tileAboveTransform;
+        Vector3 shiftedPos;
+        //Debug.Log("<color=green> Calling from </color>: " + tiles[x, yStart].name);
+        int y = firstEmptyY;
+        int nEmpty = 1;
+        int shiftedY = 0;
+        //If a match produced two empty tiles or more, all the board piece should shift of nEmpty tiles
+        for (; y > 0; y--)
+        {
+            if(tiles[x, y - 1] == null)
+            {
+                nEmpty++;
+            }
+            else{
+                break;
+            }
+        }
 
-    private IEnumerator ShiftTilesDown(int x, int yStart, float shiftDelay = .05f) {
-        WaitForSeconds waitForShiftDelay = new WaitForSeconds(shiftDelay);
-        // Avoid selection of tiles when something isShifting    
-        for (int y = yStart; y < dimY - 1; y++) {
+        for (y = firstEmptyY; y < dimY - 1; y++) {
+       
+            
             Tile tileAbove = tiles[x, y + 1];
+            
             if (tileAbove != null) {
-                Vector3 shiftedPos = tileAbove.transform.position;
-                shiftedPos.y -= tilesExtents.y * 2;
-                tileAbove.transform.position = shiftedPos;                
-                tileAbove.posY = y;
-                tiles[x, y] = tileAbove;
+                tileAboveTransform = tileAbove.transform;
+                shiftedPos = tileAboveTransform.position;
+                shiftedPos.y -= tilesExtents.y * 2 * nEmpty;
+                tileAboveTransform.position = shiftedPos;
+                shiftedY = y - (nEmpty - 1);
+                tileAbove.posY = shiftedY;
+                tiles[x, shiftedY ] = tileAbove;
                 tiles[x, y + 1] = null;
                 yield return waitForShiftDelay;
             }
             else {
-                break;
+                // last tile becames null if there is nothing above it
+                if ( (dimY - (y + 1) ) == nSelectedTiles[x])
+                {
+                    tiles[x, y] = null;
+                    if(y > 0 && tiles[x,y - 1] == null)
+                    {
+                        Debug.Break();
+                    }
+                    break;
+                }      
+                else
+                {
+                    nEmpty++;
+                }
             }
         }
-        CheckMatch(tiles[x, yStart]);
+
+        int firstShiftedTileY = firstEmptyY - (nEmpty - 1);
+        if (firstShiftedTileY - 1 > 0 && tiles[x, firstShiftedTileY - 1] == null)
+        {
+            if(tiles[x, firstShiftedTileY] == null)
+            {
+                Debug.Log(" the tile that produced the error is " + x + " y = " + firstShiftedTileY);
+                
+            }
+            else
+            {
+                tiles[x, firstShiftedTileY].GetComponent<Renderer>().material.color = Color.red;
+            }
+           
+            Debug.Break();
+        }
+       
+        for(int i = y; i > firstShiftedTileY && i >= 0; i--)
+        {
+            yield return StartCoroutine(CheckMatch(tiles[x, i]));
+            PrintBoard();
+        }
         co = null;
     }
 
-    private void CheckMatch(Tile startTile) {
+    private IEnumerator CheckMatch(Tile startTile) {
+
+        //Avoids to call check match on the tile above the last board piece of the column
+        if(startTile == null){
+            yield break;         
+        }
         int nCount = 0;
         int y = startTile.posY;
         Tile[] equalTiles = new Tile[dimX];
-       for(int x = startTile.posX + 1; x < dimX; x++) {
-            if (tiles[x, y] != null && startTile == tiles[x, y]) {
+       
+        for(int x = startTile.posX + 1; x < dimX; x++) {
+            if (tiles[x, y] != null && startTile.CheckMatch(tiles[x, y])) {
                 equalTiles[nCount] = tiles[x, y];
                 nCount++;
             }
@@ -156,7 +221,7 @@ public class BoardManager : Manager<BoardManager>
        }
 
        for (int x = startTile.posX - 1; x >= 0; x--) {
-            if (tiles[x,y] != null && startTile == tiles[x, y]) {
+            if (tiles[x,y] != null && startTile.CheckMatch(tiles[x, y])) {
                 equalTiles[nCount] = tiles[x, y];
                 nCount++;
             }
@@ -164,19 +229,53 @@ public class BoardManager : Manager<BoardManager>
                 break;
             }
        }
-      
-        //Debug.Log("<color=red> <---- start printing equal tiles found ----> </color>");
-        //for (int i = 0; i < nCount; i++)
-        //{
-        //    Debug.Log("Equal tile name: "+equalTiles[i].gameObject.name);
-        //}
+
+
         if (nCount > 1) {
+
+#if DEBUG
+          
+            Debug.Log("<color=red> <---- start printing equal tiles found ----> </color>");
+            string message = "Equal tile name: ";
+            for (int i = 0; i < nCount; i++)
+            {
+                message += " " + equalTiles[i].gameObject.name;
+            }
+
+            Debug.Log(message);
+#endif
             equalTiles[nCount] = startTile;
             nCount++;
             for(int i = 0; i < nCount; i++) {
-                Select(equalTiles[i].gameObject);
+                Select(equalTiles[i].gameObject);              
             }
-       }
+        }
 
     }
+
+    private void PrintBoard()
+    {
+        string content = "<--- Printing the board --->";
+        
+        
+          
+            for(int y = dimY - 1; y >= 0; y--)
+            {
+                content += "\n";
+                for (int x = 0; x < dimX; x++)
+                {
+                        Tile tile = tiles[x, y];
+                            if (tile != null)
+                            {
+                                content += $" {tile.name} ";
+                            }
+                            else
+                            {
+                                content += " ------- ";
+                            }
+                }
+            }
+        Debug.Log(content);
+    }
+
 }

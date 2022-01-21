@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using JetBrains.Annotations;
@@ -25,23 +26,14 @@ public class Tile : MonoBehaviour {
     /// <summary>
     /// This function could be used in the future also to add effect on selection
     /// </summary>
-    public void Select() {      
-        gameObject.SetActive(false);
+    public void Select(Action callBack) {      
+        callBack?.Invoke();
+        Destroy(gameObject);
     }
-
-    public static bool operator ==(Tile a,Tile b)
+   
+    public bool CheckMatch(Tile tile)
     {
-        if (ReferenceEquals(a, b))
-            return true;
-        
-        if (ReferenceEquals(a, null) || ReferenceEquals(b, null))
-            return false;
-        
-        return a.iD == b.iD;
+        return tile.iD == iD;  
     }
-
-    public static bool operator !=(Tile a, Tile b)
-    {
-        return !(a == b);
-    }
+    
 }
