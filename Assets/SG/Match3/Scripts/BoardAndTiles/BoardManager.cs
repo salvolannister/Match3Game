@@ -337,8 +337,6 @@ public class BoardManager : Manager<BoardManager>
         }
         else
         {
-            // if the tile above is null, it shifts null to the tile underneath the current
-            tiles[x, y - 1] = null;
             return false;
         }
     }
