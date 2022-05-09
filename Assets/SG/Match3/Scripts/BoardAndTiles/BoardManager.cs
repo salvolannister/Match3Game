@@ -48,19 +48,17 @@ public class BoardManager : Manager<BoardManager>
 
         // Hipotesis: all the tiles will have the same boundary dimensions
         Tile tmp;
-        Renderer renderer = tilesSO.GetRandomTile().GetComponent<Renderer>();
-        tilesExtents = renderer.bounds.extents;
+        Renderer backGroundRenderer = tilesSO.GetRandomTile().GetComponent<Renderer>();
+        tilesExtents = backGroundRenderer.bounds.extents;
 
-        Assert.IsNotNull(backGround, " You have not set the background component in the BoardManager");
-        renderer = backGround.GetComponent<Renderer>();
-        if (renderer == null)
+        Assert.IsNotNull(backGround, "You have not set the background component in the BoardManager");
+        backGroundRenderer = backGround.GetComponent<Renderer>();
+        if (backGroundRenderer == null)
         {
             Debug.LogError(" The background you provided has no renderer component!");
             return;
         }
-        Vector3 backGroundExtents = renderer.bounds.extents;
-        Vector3 backGroundPosition = backGround.transform.position;
-        Vector3 bottomLeftCorner = new Vector3(backGroundPosition.x - backGroundExtents.x, backGroundPosition.y - backGroundExtents.y, backGroundPosition.z - tilesExtents.z);
+        Vector3 bottomLeftCorner = GetBackgroundBottomLeftCorner(backGroundRenderer);
         //this simplifies the calculation of where the tiles should be one respect to another 
         bottomLeftCorner.x += tilesExtents.x;
         bottomLeftCorner.y += tilesExtents.y;
@@ -76,22 +74,8 @@ public class BoardManager : Manager<BoardManager>
 
             for (int y = 0; y < dimY; y++)
             {
-                if (x == 0 && y == 0)
-                {
-                    tmp = Tile.SpawnTile(x, y);
-                }
-                else if (y == 0)
-                {
-                    tmp = Tile.SpawnTile(x, y, previousLeft[y], previousLeft[y]);
-                }
-                else
-                {
-                    tmp = Tile.SpawnTile(x, y, previousLeft[y], previousBelow);
-                }
-
-                newPosition.x = bottomLeftCorner.x + tilesExtents.x * (x * 2);
-                newPosition.y = bottomLeftCorner.y + tilesExtents.y * (y * 2);
-                tmp.transform.position = newPosition;
+                tmp = SpawnTile(previousLeft, previousBelow, x, y);
+                tmp.transform.position = FindNewPosition(bottomLeftCorner, ref newPosition, x, y);
                 tiles[x, y] = tmp;
 
                 int tmpID = tmp.GetID();
@@ -99,8 +83,51 @@ public class BoardManager : Manager<BoardManager>
                 previousBelow = tmpID;
             }
         }
+
+        Vector3 GetBackgroundBottomLeftCorner(Renderer renderer)
+        {
+            Vector3 backGroundExtents = renderer.bounds.extents;
+            Vector3 backGroundPosition = backGround.transform.position;
+            Vector3 bottomLeftCorner = new Vector3(backGroundPosition.x - backGroundExtents.x, backGroundPosition.y - backGroundExtents.y, backGroundPosition.z - tilesExtents.z);
+            return bottomLeftCorner;
+        }
     }
 
+
+
+    private Vector3 FindNewPosition(Vector3 bottomLeftCorner, ref Vector3 newPosition, int x, int y)
+    {
+        newPosition.x = bottomLeftCorner.x + tilesExtents.x * (x * 2);
+        newPosition.y = bottomLeftCorner.y + tilesExtents.y * (y * 2);
+        return newPosition;
+    }
+
+    /// <summary>
+    /// Spawns a tile considering the previousLeft spawned tiles and the one underneath
+    /// </summary>
+    /// <param name="previousLeft">Array of the previous spawned tiles</param>
+    /// <param name="previousBelow"></param>
+    /// <param name="x"></param>
+    /// <param name="y"></param>
+    /// <returns></returns>
+    private Tile SpawnTile(int[] previousLeft, int previousBelow, int x, int y)
+    {
+        Tile tmp;
+        if (x == 0 && y == 0)
+        {
+            tmp = Tile.SpawnTile(x, y);
+        }
+        else if (y == 0)
+        {
+            tmp = Tile.SpawnTile(x, y, previousLeft[y], previousLeft[y]);
+        }
+        else
+        {
+            tmp = Tile.SpawnTile(x, y, previousLeft[y], previousBelow);
+        }
+
+        return tmp;
+    }
 
     void Update()
     {
