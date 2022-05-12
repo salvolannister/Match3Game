@@ -205,13 +205,11 @@ public class BoardManager : Manager<BoardManager>
         int y = startTile.posY;
         int startX = startTile.posX;
         int endX;
-        Tile[] equalTiles = new Tile[dimX];
 
         for (int x = startX + 1; x < dimX; x++)
         {
             if (tiles[x, y] != null && startTile.CheckMatch(tiles[x, y]))
             {
-                equalTiles[nCount] = tiles[x, y];
                 nCount++;
             }
             else
@@ -226,7 +224,6 @@ public class BoardManager : Manager<BoardManager>
         {
             if (tiles[x, y] != null && startTile.CheckMatch(tiles[x, y]))
             {
-                equalTiles[nCount] = tiles[x, y];
                 nCount++;
             }
             else
