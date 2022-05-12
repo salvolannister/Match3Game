@@ -159,9 +159,9 @@ public class BoardManager : Manager<BoardManager>
     private IEnumerator ShiftTilesDown(int x, int yStart)
     {
         WaitForSeconds waitForShiftDelay = new WaitForSeconds(SHIFT_SECONDS);
-        //Debug.Log("<color=green> Calling from </color>: " + tiles[x, yStart].name);
-        int y;
         yield return waitForShiftDelay;
+
+        int y;
         for (y = yStart; y < dimY - 1; y++)
         {
 
