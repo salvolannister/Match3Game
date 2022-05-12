@@ -236,19 +236,7 @@ public class BoardManager : Manager<BoardManager>
 
         if (nCount > 2)
         {
-
-#if DEBUG
-            //Debug.Log("<color=red> <---- start printing equal tiles found ----> </color>");
-            //string message = "Equal tile name: ";
-            //for (int i = startX; i <= endX; i++)
-            //{
-            //    message += " " + tiles[i, y].gameObject.name;
-            //}
-            //Debug.Log(message);
-#endif
-
             yield return MakeMatch(startX, endX, y);
-
         }
 
     }
