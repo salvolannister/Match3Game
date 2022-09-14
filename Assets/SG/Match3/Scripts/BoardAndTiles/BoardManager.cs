@@ -48,23 +48,10 @@ public class BoardManager : Manager<BoardManager>
 
         // Hipotesis: all the tiles will have the same boundary dimensions
         Tile tmp;
-        Renderer backGroundRenderer = tilesSO.GetRandomTile().GetComponent<Renderer>();
-        tilesExtents = backGroundRenderer.bounds.extents;
-
-        Assert.IsNotNull(backGround, "You have not set the background component in the BoardManager");
-        backGroundRenderer = backGround.GetComponent<Renderer>();
-        if (backGroundRenderer == null)
-        {
-            Debug.LogError(" The background you provided has no renderer component!");
-            return;
-        }
-        Vector3 bottomLeftCorner = GetBackgroundBottomLeftCorner(backGroundRenderer);
-        //this simplifies the calculation of where the tiles should be one respect to another 
-        bottomLeftCorner.x += tilesExtents.x;
-        bottomLeftCorner.y += tilesExtents.y;
-
+       
+        Vector3 tileStartingPos = GetTileStartingPos();
         Vector3 newPosition = Vector3.zero;
-        newPosition.z = bottomLeftCorner.z;
+        newPosition.z = tileStartingPos.z;
 
         int[] previousLeft = new int[dimY];
         int previousBelow = 100;
@@ -75,7 +62,7 @@ public class BoardManager : Manager<BoardManager>
             for (int y = 0; y < dimY; y++)
             {
                 tmp = SpawnTile(previousLeft, previousBelow, x, y);
-                tmp.transform.position = FindNewPosition(bottomLeftCorner, ref newPosition, x, y);
+                tmp.transform.position = FindNewPosition(tileStartingPos, ref newPosition, x, y);
                 tiles[x, y] = tmp;
 
                 int tmpID = tmp.GetID();
@@ -84,12 +71,26 @@ public class BoardManager : Manager<BoardManager>
             }
         }
 
-        Vector3 GetBackgroundBottomLeftCorner(Renderer renderer)
+        Vector3 GetTileStartingPos()
         {
-            Vector3 backGroundExtents = renderer.bounds.extents;
+
+            Renderer tileRenderer = tilesSO.GetRandomTile().GetComponent<Renderer>();
+            tilesExtents = tileRenderer.bounds.extents;
+
+            Assert.IsNotNull(backGround, "You have not set the background component in the BoardManager");
+            Renderer backGroundRenderer = backGround.GetComponent<Renderer>();
+            if (backGroundRenderer == null)
+            {
+                Debug.LogError("The background you provided has no renderer component!");
+                gameObject.SetActive(false);
+            }
+            Vector3 backGroundExtents = backGroundRenderer.bounds.extents;
             Vector3 backGroundPosition = backGround.transform.position;
             Vector3 bottomLeftCorner = new Vector3(backGroundPosition.x - backGroundExtents.x, backGroundPosition.y - backGroundExtents.y, backGroundPosition.z - tilesExtents.z);
-            return bottomLeftCorner;
+            Vector3 startingPos = bottomLeftCorner;
+            startingPos.x += tilesExtents.x;
+            startingPos.y += tilesExtents.y;
+            return startingPos;
         }
     }
 
@@ -159,9 +160,9 @@ public class BoardManager : Manager<BoardManager>
     private IEnumerator ShiftTilesDown(int x, int yStart)
     {
         WaitForSeconds waitForShiftDelay = new WaitForSeconds(SHIFT_SECONDS);
-        //Debug.Log("<color=green> Calling from </color>: " + tiles[x, yStart].name);
-        int y;
         yield return waitForShiftDelay;
+
+        int y;
         for (y = yStart; y < dimY - 1; y++)
         {
 
@@ -205,13 +206,11 @@ public class BoardManager : Manager<BoardManager>
         int y = startTile.posY;
         int startX = startTile.posX;
         int endX;
-        Tile[] equalTiles = new Tile[dimX];
 
         for (int x = startX + 1; x < dimX; x++)
         {
             if (tiles[x, y] != null && startTile.CheckMatch(tiles[x, y]))
             {
-                equalTiles[nCount] = tiles[x, y];
                 nCount++;
             }
             else
@@ -226,7 +225,6 @@ public class BoardManager : Manager<BoardManager>
         {
             if (tiles[x, y] != null && startTile.CheckMatch(tiles[x, y]))
             {
-                equalTiles[nCount] = tiles[x, y];
                 nCount++;
             }
             else
@@ -239,19 +237,7 @@ public class BoardManager : Manager<BoardManager>
 
         if (nCount > 2)
         {
-
-#if DEBUG
-            //Debug.Log("<color=red> <---- start printing equal tiles found ----> </color>");
-            //string message = "Equal tile name: ";
-            //for (int i = startX; i <= endX; i++)
-            //{
-            //    message += " " + tiles[i, y].gameObject.name;
-            //}
-            //Debug.Log(message);
-#endif
-
             yield return MakeMatch(startX, endX, y);
-
         }
 
     }
@@ -273,6 +259,8 @@ public class BoardManager : Manager<BoardManager>
         }
         yield return ShiftMatchedTilesDown(startX, endX, startY);
     }
+    
+    
     /// <summary>
     /// It will shift all the tiles above the matched one and it will also check for new matches starting from
     /// the bottom row going upper

@@ -1,0 +1,17 @@
+﻿@startuml
+!theme reddress-lightorange
+actor Player
+Player -> BoardManager: Select()
+== Selection Process ==
+BoardManager-> Tile: Select()
+Tile-> BoardManager: ShiftTilesDown()
+BoardManager-> BoardManager: ShiftTile()
+== Once Tiles are shifted  == 
+BoardManager-> BoardManager: CheckMatch()
+BoardManager-> Tile: CheckMatch()
+BoardManager-> BoardManager: MakeMatch()
+BoardManager -> Tile: Match()
+BoardManager-> BoardManager: ShiftMatchedTilesDown()
+BoardManager-> BoardManager: ShiftTile()
+
+@enduml
